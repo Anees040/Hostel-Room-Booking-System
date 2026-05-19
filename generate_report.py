@@ -66,17 +66,25 @@ def read_src(rel_path):
         return '// File not found: ' + rel_path
 
 def add_image(filename, caption='', width=Inches(5.8)):
-    path = os.path.join(IMGS, filename)
-    if os.path.exists(path):
-        doc.add_picture(path, width=width)
-        if caption:
-            cp = doc.add_paragraph(caption)
-            cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            for r in cp.runs:
-                r.font.size = Pt(9)
-                r.font.italic = True
-    else:
-        doc.add_paragraph(f'[Screenshot: {filename} — not found]')
+    # Placeholder for the user to insert their own image
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run(f"\n[ Please insert screenshot '{filename}' here ]\n")
+    run.font.color.rgb = RGBColor(156, 163, 175) # Gray color for placeholder
+    
+    # Add a border-like shading to the placeholder
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:val'), 'clear')
+    shd.set(qn('w:color'), 'auto')
+    shd.set(qn('w:fill'), 'F8FAFC')
+    p._p.get_or_add_pPr().append(shd)
+
+    if caption:
+        cp = doc.add_paragraph(caption)
+        cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for r in cp.runs:
+            r.font.size = Pt(9)
+            r.font.italic = True
 
 # ==============================================================================
 # TITLE PAGE
@@ -545,6 +553,6 @@ body(
 )
 
 # ── Save ──────────────────────────────────────────────────────────────────────
-out = os.path.join(BASE, 'Hostel_System_Project_Report.docx')
+out = os.path.join(BASE, 'Hostel_System_Project_Report_v2.docx')
 doc.save(out)
 print('Report saved:', out)
