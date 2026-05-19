@@ -120,14 +120,14 @@ public class AdminDashboard extends JFrame {
 
         JPanel leftHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         leftHeader.setOpaque(false);
-        JLabel titleLbl = new JLabel("🏢  COMSATS Hostel — Admin Panel");
+        JLabel titleLbl = new JLabel("COMSATS Hostel — Admin Panel");
         titleLbl.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
         titleLbl.setForeground(Color.WHITE);
         leftHeader.add(titleLbl);
 
         JPanel rightHeader = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightHeader.setOpaque(false);
-        JLabel adminNameLbl = new JLabel("👤  " + admin.getName());
+        JLabel adminNameLbl = new JLabel(admin.getName());
         adminNameLbl.setFont(UITheme.BODY_FONT);
         adminNameLbl.setForeground(new Color(186, 211, 252));
         JButton logoutBtn = UITheme.dangerButton("Sign Out");
@@ -146,13 +146,13 @@ public class AdminDashboard extends JFrame {
         // Center — tabbed pane
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(UITheme.BODY_FONT);
-        tabs.addTab("🏠 Rooms",          new RoomPanel(roomManager));
-        tabs.addTab("📝 All Bookings",   buildBookingsTab());
-        tabs.addTab("🏅 Students",       buildStudentsTab());
-        tabs.addTab("🔧 Maintenance",    buildMaintenanceTab());
-        tabs.addTab("★ Reviews",          buildReviewsTab());
-        tabs.addTab("🔔 Notifications",  buildNotificationsTab());
-        tabs.addTab("📊 Reports",         new ReportsPanel(bookingManager, maintenanceManager));
+        tabs.addTab("Rooms",          new RoomPanel(roomManager));
+        tabs.addTab("All Bookings",   buildBookingsTab());
+        tabs.addTab("Students",       buildStudentsTab());
+        tabs.addTab("Maintenance",    buildMaintenanceTab());
+        tabs.addTab("Reviews",          buildReviewsTab());
+        tabs.addTab("Notifications",  buildNotificationsTab());
+        tabs.addTab("Reports",         new ReportsPanel(bookingManager, maintenanceManager));
         add(tabs, BorderLayout.CENTER);
 
         // South — stats bar

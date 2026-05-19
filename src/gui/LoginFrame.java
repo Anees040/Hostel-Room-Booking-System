@@ -117,18 +117,14 @@ public class LoginFrame extends JFrame {
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.insets = new Insets(6, 20, 6, 20);
 
-        // Icon placeholder (building emoji rendered as label)
-        JLabel icon = new JLabel("🏢");
-        icon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 52));
-        icon.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(icon, gbc);
+        // Removed icon placeholder due to font issues
 
         JLabel title = new JLabel("<html><center>Hostel Management<br>System</center></html>", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(Color.WHITE);
         panel.add(title, gbc);
 
-        JLabel sub = new JLabel("<html><center>CSC-241 OOP Project<br>3rd Semester</center></html>", SwingConstants.CENTER);
+        JLabel sub = new JLabel("<html><center>CSC-241 OOP Project<br>2nd Semester</center></html>", SwingConstants.CENTER);
         sub.setFont(UITheme.LABEL_FONT);
         sub.setForeground(new Color(186, 211, 252));
         panel.add(sub, gbc);
@@ -136,7 +132,7 @@ public class LoginFrame extends JFrame {
         panel.add(Box.createVerticalStrut(30), gbc);
 
         // Feature bullets
-        String[] features = {"✔  Browse & Book Rooms", "✔  Manage Maintenance", "✔  Leave Room Reviews", "✔  Real-time Notifications"};
+        String[] features = {"- Browse & Book Rooms", "- Manage Maintenance", "- Leave Room Reviews", "- Real-time Notifications"};
         for (String f : features) {
             JLabel fl = new JLabel(f);
             fl.setFont(UITheme.SMALL_FONT);
@@ -174,7 +170,7 @@ public class LoginFrame extends JFrame {
         gbc.insets = new Insets(6, 0, 6, 0);
 
         // Title
-        JLabel loginTitle = new JLabel("Welcome back 👋");
+        JLabel loginTitle = new JLabel("Welcome back");
         loginTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
         loginTitle.setForeground(UITheme.TEXT_PRIMARY);
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 4, 0);

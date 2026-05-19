@@ -120,13 +120,13 @@ public class StudentDashboard extends JFrame {
 
         JPanel leftH = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         leftH.setOpaque(false);
-        JLabel titleLbl = new JLabel("🏠  Welcome, " + student.getName());
+        JLabel titleLbl = new JLabel("Welcome, " + student.getName());
         titleLbl.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 18));
         titleLbl.setForeground(Color.WHITE);
         leftH.add(titleLbl);
 
         long unread = notificationManager.getUnreadCount(student.getId());
-        unreadBadge = new JLabel(unread > 0 ? "  🔔 " + unread + " unread" : "");
+        unreadBadge = new JLabel(unread > 0 ? "  [ " + unread + " unread ]" : "");
         unreadBadge.setFont(UITheme.BODY_FONT);
         unreadBadge.setForeground(new Color(253, 224, 71));
         leftH.add(unreadBadge);
@@ -148,11 +148,11 @@ public class StudentDashboard extends JFrame {
         // Center — tabs
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(UITheme.BODY_FONT);
-        tabs.addTab("🏠  Browse Rooms",        buildBrowseRoomsTab());
-        tabs.addTab("📝  My Bookings",         buildMyBookingsTab());
-        tabs.addTab("🔧  Submit Maintenance",  buildMaintenanceTab());
-        tabs.addTab("★  Reviews",              buildReviewsTab());
-        tabs.addTab("🔔  Notifications",       buildNotificationsTab());
+        tabs.addTab("Browse Rooms",        buildBrowseRoomsTab());
+        tabs.addTab("My Bookings",         buildMyBookingsTab());
+        tabs.addTab("Submit Maintenance",  buildMaintenanceTab());
+        tabs.addTab("Reviews",              buildReviewsTab());
+        tabs.addTab("Notifications",       buildNotificationsTab());
         add(tabs, BorderLayout.CENTER);
     }
 
