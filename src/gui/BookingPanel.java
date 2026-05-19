@@ -204,9 +204,9 @@ public class BookingPanel extends JPanel {
                             "Unable to create booking.",
                             "Booking Failed", JOptionPane.ERROR_MESSAGE);
                 }
-            } catch (RoomNotAvailableException ex) {
+            } catch (RoomNotAvailableException | exceptions.InvalidBookingException ex) {
                 JOptionPane.showMessageDialog(dialog, ex.getMessage(),
-                        "Room Not Available", JOptionPane.ERROR_MESSAGE);
+                        "Booking Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
