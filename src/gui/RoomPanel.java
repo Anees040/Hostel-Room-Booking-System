@@ -1,12 +1,11 @@
 package gui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Window;
 import java.util.List;
@@ -18,31 +17,31 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import models.AbstractRoom;
 import models.DoubleRoom;
+import models.RoomReview;
 import models.SingleRoom;
 import models.SuiteRoom;
 import services.RoomManager;
 
 /**
  * Admin room management panel with table and CRUD-like actions.
+ * Demonstrates Layout Managers (Lab 13) and Event-Driven Programming (Lab 14).
  */
 public class RoomPanel extends JPanel {
-    private static final Color DARK_BLUE = new Color(25, 78, 140);
-    private static final Color GREEN = new Color(39, 174, 96);
-    private static final Color RED = new Color(192, 57, 43);
-    private static final Color ORANGE = new Color(230, 126, 34);
-    private static final Color BG_COLOR = new Color(245, 245, 245);
-    private static final Color WHITE = Color.WHITE;
 
     private final RoomManager roomManager;
     private final DefaultTableModel tableModel;
     private final JTable roomTable;
+    private JLabel roomCountLabel;
 
     /**
      * Constructs the room panel.
@@ -53,160 +52,170 @@ public class RoomPanel extends JPanel {
         this.roomManager = roomManager;
 
         setLayout(new BorderLayout(10, 10));
-        setBackground(BG_COLOR);
+        setBackground(UITheme.LIGHT_BG);
         setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JLabel title = new JLabel("Room Management");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        title.setForeground(DARK_BLUE);
+        // North — filter + count
+        JPanel northPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        northPanel.setBackground(UITheme.LIGHT_BG);
 
+        JComboBox<String> typeFilter = new JComboBox<>(new String[]{"All", "Single", "Double", "Suite"});
+        typeFilter.setFont(UITheme.BODY_FONT);
+        JButton refreshBtn = UITheme.primaryButton("Refresh");
+        roomCountLabel = new JLabel("Rooms: 0");
+        roomCountLabel.setFont(UITheme.BODY_FONT);
+
+        northPanel.add(new JLabel("Filter:"));
+        northPanel.add(typeFilter);
+        northPanel.add(refreshBtn);
+        northPanel.add(roomCountLabel);
+
+        refreshBtn.addActionListener(e -> refreshTable((String) typeFilter.getSelectedItem()));
+        typeFilter.addActionListener(e -> refreshTable((String) typeFilter.getSelectedItem()));
+
+        add(northPanel, BorderLayout.NORTH);
+
+        // Center — table
         tableModel = new DefaultTableModel(
-                new Object[]{"Room No", "Type", "Capacity", "Price", "Status", "Amenities"}, 0
+                new Object[]{"Type", "Room No", "Floor", "Price/Month", "Available", "Amenities", "Avg Rating", "Max Occ."}, 0
         ) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+            public boolean isCellEditable(int row, int column) { return false; }
         };
-
         roomTable = new JTable(tableModel);
-        roomTable.setRowHeight(24);
+        UITheme.styleTable(roomTable);
         roomTable.getTableHeader().setReorderingAllowed(false);
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        buttonPanel.setBackground(BG_COLOR);
-
-        JButton addButton = new JButton("Add Room");
-        addButton.setBackground(GREEN);
-        addButton.setForeground(WHITE);
-
-        JButton deleteButton = new JButton("Delete Room");
-        deleteButton.setBackground(RED);
-        deleteButton.setForeground(WHITE);
-
-        JButton availableButton = new JButton("Mark Available");
-        availableButton.setBackground(ORANGE);
-        availableButton.setForeground(WHITE);
-
-        buttonPanel.add(addButton);
-        buttonPanel.add(deleteButton);
-        buttonPanel.add(availableButton);
-
-        addButton.addActionListener(e -> showAddRoomDialog());
-        deleteButton.addActionListener(e -> deleteSelectedRoom());
-        availableButton.addActionListener(e -> markSelectedRoomAvailable());
-
-        add(title, BorderLayout.NORTH);
         add(new JScrollPane(roomTable), BorderLayout.CENTER);
-        add(buttonPanel, BorderLayout.SOUTH);
 
-        refreshTable();
+        // South — action buttons
+        JPanel southPanel = new JPanel(new GridLayout(1, 4, 6, 6));
+        southPanel.setBackground(UITheme.LIGHT_BG);
+        southPanel.setBorder(new EmptyBorder(8, 0, 0, 0));
+
+        JButton addBtn     = UITheme.successButton("Add Room");
+        JButton deleteBtn  = UITheme.dangerButton("Delete Room");
+        JButton availBtn   = UITheme.primaryButton("Mark Available");
+        JButton detailsBtn = UITheme.primaryButton("View Details");
+
+        addBtn.addActionListener(e -> showAddRoomDialog());
+        deleteBtn.addActionListener(e -> deleteSelectedRoom());
+        availBtn.addActionListener(e -> markSelectedRoomAvailable());
+        detailsBtn.addActionListener(e -> viewRoomDetails());
+
+        southPanel.add(addBtn);
+        southPanel.add(deleteBtn);
+        southPanel.add(availBtn);
+        southPanel.add(detailsBtn);
+        add(southPanel, BorderLayout.SOUTH);
+
+        refreshTable("All");
     }
 
     /**
-     * Reloads table contents from manager data.
+     * Reloads table with type filter.
+     *
+     * @param typeFilter "All" or specific type name
      */
-    public final void refreshTable() {
+    public final void refreshTable(String typeFilter) {
         tableModel.setRowCount(0);
-        List<AbstractRoom> rooms = roomManager.getAllRooms();
+        List<AbstractRoom> rooms;
+        if (typeFilter == null || "All".equalsIgnoreCase(typeFilter)) {
+            rooms = roomManager.getAllRooms();
+        } else {
+            rooms = roomManager.getRoomsByType(typeFilter);
+        }
         for (AbstractRoom room : rooms) {
+            double avg = roomManager.getAverageRating(room.getRoomNumber());
             tableModel.addRow(new Object[]{
-                    room.getRoomNumber(),
                     room.getRoomType(),
-                    room.getCapacity(),
-                    room.getPrice(),
-                    room.isAvailable() ? "Available" : "Booked",
-                    room.getAmenities()
+                    room.getRoomNumber(),
+                    room.getFloor(),
+                    room.getPricePerMonth(),
+                    room.isAvailable() ? "Yes" : "No",
+                    room.getAmenities(),
+                    avg > 0 ? String.format("%.1f", avg) : "—",
+                    room.getMaxOccupancy()
             });
         }
+        roomCountLabel.setText("Rooms: " + rooms.size());
+    }
+
+    /**
+     * Reloads table with no filter (shows all).
+     */
+    public final void refreshTable() {
+        refreshTable("All");
     }
 
     private void showAddRoomDialog() {
         Window parent = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = new JDialog(parent, "Add Room", Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setSize(400, 330);
+        dialog.setSize(420, 340);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 220, 220)),
-                new EmptyBorder(14, 14, 14, 14)
-        ));
-        panel.setBackground(WHITE);
+                BorderFactory.createLineBorder(UITheme.PRIMARY, 1),
+                new EmptyBorder(14, 14, 14, 14)));
+        panel.setBackground(UITheme.LIGHT_BG);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(6, 6, 6, 6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JTextField roomNoField = new JTextField();
-        JTextField floorField = new JTextField();
-        JComboBox<String> typeCombo = new JComboBox<>(new String[]{"Single", "Double", "Suite"});
-        JTextField priceField = new JTextField("8000");
-        JTextField amenitiesField = new JTextField("WiFi");
-        JComboBox<String> statusCombo = new JComboBox<>(new String[]{"Available", "Booked"});
+        JComboBox<String> typeCombo    = new JComboBox<>(new String[]{"Single", "Double", "Suite"});
+        JTextField roomNoField         = new JTextField();
+        JSpinner floorSpinner          = new JSpinner(new SpinnerNumberModel(1, 1, 10, 1));
+        JTextField priceField          = new JTextField("8000");
+        JTextField amenitiesField      = new JTextField("WiFi");
 
-        addRow(panel, gbc, 0, "Room No:", roomNoField);
-        addRow(panel, gbc, 1, "Floor:", floorField);
-        addRow(panel, gbc, 2, "Type:", typeCombo);
-        addRow(panel, gbc, 3, "Price:", priceField);
-        addRow(panel, gbc, 4, "Amenities:", amenitiesField);
-        addRow(panel, gbc, 5, "Status:", statusCombo);
+        addFormRow(panel, gbc, 0, "Type:", typeCombo);
+        addFormRow(panel, gbc, 1, "Room No:", roomNoField);
+        addFormRow(panel, gbc, 2, "Floor (1-10):", floorSpinner);
+        addFormRow(panel, gbc, 3, "Price/Month:", priceField);
+        addFormRow(panel, gbc, 4, "Amenities:", amenitiesField);
 
         typeCombo.addActionListener(e -> {
-            String selected = (String) typeCombo.getSelectedItem();
-            if ("Single".equalsIgnoreCase(selected)) {
-                priceField.setText("8000");
-            } else if ("Double".equalsIgnoreCase(selected)) {
-                priceField.setText("12000");
-            } else {
-                priceField.setText("20000");
-            }
+            String sel = (String) typeCombo.getSelectedItem();
+            if ("Single".equalsIgnoreCase(sel)) priceField.setText("8000");
+            else if ("Double".equalsIgnoreCase(sel)) priceField.setText("12000");
+            else priceField.setText("20000");
         });
 
-        JButton saveButton = new JButton("Save");
-        saveButton.setBackground(GREEN);
-        saveButton.setForeground(WHITE);
+        JButton addBtn = UITheme.successButton("Add");
+        gbc.gridx = 1; gbc.gridy = 5;
+        panel.add(addBtn, gbc);
 
-        gbc.gridx = 1;
-        gbc.gridy = 6;
-        panel.add(saveButton, gbc);
-
-        saveButton.addActionListener(e -> {
-            String roomNo = roomNoField.getText().trim();
-            String floorText = floorField.getText().trim();
-            String type = (String) typeCombo.getSelectedItem();
+        addBtn.addActionListener(e -> {
+            String roomNo    = roomNoField.getText().trim();
             String priceText = priceField.getText().trim();
             String amenities = amenitiesField.getText().trim();
-            boolean available = "Available".equals(statusCombo.getSelectedItem());
+            String type      = (String) typeCombo.getSelectedItem();
+            int floor        = (Integer) floorSpinner.getValue();
 
-            if (roomNo.isEmpty() || floorText.isEmpty() || priceText.isEmpty()) {
-                JOptionPane.showMessageDialog(dialog, "Room number, floor and price are required.",
+            if (roomNo.isEmpty() || priceText.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Room number and price are required.",
                         "Input Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-
             if (roomManager.findRoom(roomNo) != null) {
                 JOptionPane.showMessageDialog(dialog, "Room number already exists.",
                         "Duplicate Room", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-
             try {
-                int floor = Integer.parseInt(floorText);
                 double price = Double.parseDouble(priceText);
-                AbstractRoom room = createRoomByType(type, roomNo, floor, price, available, amenities);
+                AbstractRoom room = createRoomByType(type, roomNo, floor, price, true, amenities);
                 if (room == null) {
-                    JOptionPane.showMessageDialog(dialog, "Invalid room type selected.",
+                    JOptionPane.showMessageDialog(dialog, "Invalid room type.",
                             "Input Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-
                 roomManager.addRoom(room);
-                roomManager.save();
-                refreshTable();
+                refreshTable("All");
                 dialog.dispose();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dialog, "Floor and price must be numeric.",
+                JOptionPane.showMessageDialog(dialog, "Price must be numeric.",
                         "Input Error", JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -217,63 +226,75 @@ public class RoomPanel extends JPanel {
 
     private AbstractRoom createRoomByType(String type, String roomNo, int floor,
                                           double price, boolean available, String amenities) {
-        if ("Single".equalsIgnoreCase(type)) {
-            return new SingleRoom(roomNo, floor, price, available, amenities);
-        }
-        if ("Double".equalsIgnoreCase(type)) {
-            return new DoubleRoom(roomNo, floor, price, available, amenities);
-        }
-        if ("Suite".equalsIgnoreCase(type)) {
-            return new SuiteRoom(roomNo, floor, price, available, amenities);
-        }
+        if ("Single".equalsIgnoreCase(type)) return new SingleRoom(roomNo, floor, price, available, amenities);
+        if ("Double".equalsIgnoreCase(type)) return new DoubleRoom(roomNo, floor, price, available, amenities);
+        if ("Suite".equalsIgnoreCase(type))  return new SuiteRoom(roomNo, floor, price, available, amenities);
         return null;
     }
 
     private void deleteSelectedRoom() {
-        int selectedRow = roomTable.getSelectedRow();
-        if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Select a room first.",
-                    "No Selection", JOptionPane.WARNING_MESSAGE);
+        int row = roomTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a room first.", "No Selection", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        String roomNo = String.valueOf(tableModel.getValueAt(selectedRow, 0));
-        boolean deleted = roomManager.removeRoom(roomNo);
-        if (deleted) {
-            roomManager.save();
-            refreshTable();
-            JOptionPane.showMessageDialog(this, "Room deleted successfully.",
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this, "Could not delete selected room.",
-                    "Action Failed", JOptionPane.ERROR_MESSAGE);
+        String roomNo = String.valueOf(tableModel.getValueAt(row, 1));
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete room " + roomNo + "?",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            if (roomManager.deleteRoom(roomNo)) {
+                refreshTable("All");
+                JOptionPane.showMessageDialog(this, "Room deleted.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Could not delete room.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
     private void markSelectedRoomAvailable() {
-        int selectedRow = roomTable.getSelectedRow();
-        if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Select a room first.",
-                    "No Selection", JOptionPane.WARNING_MESSAGE);
+        int row = roomTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a room first.", "No Selection", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        String roomNo = String.valueOf(tableModel.getValueAt(selectedRow, 0));
-        AbstractRoom room = roomManager.findRoom(roomNo);
-        if (room != null) {
-            room.setAvailable(true);
-            roomManager.save();
-            refreshTable();
-            JOptionPane.showMessageDialog(this, "Room marked available.",
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+        String roomNo = String.valueOf(tableModel.getValueAt(row, 1));
+        if (roomManager.markAvailable(roomNo)) {
+            refreshTable("All");
+            JOptionPane.showMessageDialog(this, "Room marked available.", "Success", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
-    private void addRow(JPanel panel, GridBagConstraints gbc, int row, String label, java.awt.Component field) {
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        panel.add(new JLabel(label), gbc);
+    private void viewRoomDetails() {
+        int row = roomTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a room first.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String roomNo = String.valueOf(tableModel.getValueAt(row, 1));
+        AbstractRoom room = roomManager.findRoom(roomNo);
+        if (room == null) return;
 
+        StringBuilder sb = new StringBuilder();
+        sb.append(room.toString()).append("\n\n");
+        List<RoomReview> reviews = roomManager.getReviewsForRoom(roomNo);
+        sb.append("Reviews (").append(reviews.size()).append("):\n");
+        for (RoomReview rv : reviews) {
+            sb.append("  ").append(rv.toString()).append("\n");
+        }
+        if (reviews.isEmpty()) sb.append("  No reviews yet.\n");
+
+        JTextArea ta = new JTextArea(sb.toString(), 12, 40);
+        ta.setEditable(false);
+        ta.setFont(UITheme.BODY_FONT);
+        JOptionPane.showMessageDialog(this, new JScrollPane(ta),
+                "Room Details — " + roomNo, JOptionPane.PLAIN_MESSAGE);
+    }
+
+    private void addFormRow(JPanel panel, GridBagConstraints gbc, int row, String label, java.awt.Component field) {
+        gbc.gridx = 0; gbc.gridy = row;
+        JLabel lbl = new JLabel(label);
+        lbl.setFont(UITheme.BODY_FONT);
+        panel.add(lbl, gbc);
         gbc.gridx = 1;
         panel.add(field, gbc);
     }
