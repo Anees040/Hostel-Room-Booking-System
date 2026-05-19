@@ -1,9 +1,8 @@
 package services;
 
+import exceptions.InvalidBookingException;
 import exceptions.RoomNotAvailableException;
-import interfaces.Bookable;
 import interfaces.Saveable;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,11 +10,14 @@ import java.util.Map;
 import models.AbstractRoom;
 import models.Booking;
 import models.Student;
+import utils.DateUtils;
+import utils.IdGenerator;
 
 /**
  * Manages room booking lifecycle and persistence.
+ * Implements Saveable (Lab 12) interface.
  */
-public class BookingManager implements Saveable, Bookable {
+public class BookingManager implements Saveable {
     private final List<Booking> bookings = new ArrayList<>();
     private final Map<String, Booking> bookingMap = new HashMap<>();
     private static final String FILE = "data/bookings.txt";
@@ -23,41 +25,80 @@ public class BookingManager implements Saveable, Bookable {
 
     private final RoomManager roomManager;
     private final StudentManager studentManager;
+    private final NotificationManager notificationManager;
 
     /**
-     * Constructs booking manager with dependencies.
+     * Constructs booking manager with all dependencies.
      *
-     * @param roomManager room manager dependency
+     * @param roomManager         room manager dependency
+     * @param studentManager      student manager dependency
+     * @param notificationManager notification manager dependency
+     */
+    public BookingManager(RoomManager roomManager, StudentManager studentManager,
+                          NotificationManager notificationManager) {
+        this.roomManager = roomManager;
+        this.studentManager = studentManager;
+        this.notificationManager = notificationManager;
+    }
+
+    /**
+     * Backwards-compatible constructor without NotificationManager.
+     *
+     * @param roomManager    room manager dependency
      * @param studentManager student manager dependency
      */
     public BookingManager(RoomManager roomManager, StudentManager studentManager) {
-        this.roomManager = roomManager;
-        this.studentManager = studentManager;
-        load();
+        this(roomManager, studentManager, new NotificationManager());
     }
 
     /**
      * Creates a booking and marks room unavailable.
      *
-     * @param student student entity
-     * @param room room entity
-     * @param checkIn check-in date
-     * @param checkOut check-out date
+     * @param student  student entity
+     * @param room     room entity
+     * @param checkIn  check-in date (yyyy-MM-dd)
+     * @param checkOut check-out date (yyyy-MM-dd)
      * @return created booking
      * @throws RoomNotAvailableException if room is already booked
+     * @throws InvalidBookingException   if dates are invalid
      */
     public Booking createBooking(Student student, AbstractRoom room,
                                  String checkIn, String checkOut)
-            throws RoomNotAvailableException {
+            throws RoomNotAvailableException, InvalidBookingException {
         if (student == null || room == null) {
-            return null;
-        }
-        if (!room.isAvailable()) {
-            throw new RoomNotAvailableException(room.getRoomNumber());
+            throw new InvalidBookingException("Student and room must not be null.");
         }
 
-        String bookingId = generateBookingId();
-        String bookingDate = LocalDate.now().toString();
+        // Validate dates
+        if (!DateUtils.isValidDate(checkIn)) {
+            throw new InvalidBookingException("Invalid check-in date: " + checkIn + ". Use yyyy-MM-dd format.");
+        }
+        if (!DateUtils.isValidDate(checkOut)) {
+            throw new InvalidBookingException("Invalid check-out date: " + checkOut + ". Use yyyy-MM-dd format.");
+        }
+        if (!DateUtils.isCheckOutAfterCheckIn(checkIn, checkOut)) {
+            throw new InvalidBookingException("Check-out date must be after check-in date.");
+        }
+
+        // Check for date overlap with existing active bookings for same room
+        for (Booking existing : bookings) {
+            if (existing.getRoom() != null
+                    && existing.getRoom().getRoomNumber().equalsIgnoreCase(room.getRoomNumber())
+                    && existing.isActive()) {
+                if (DateUtils.hasDateOverlap(checkIn, checkOut,
+                        existing.getCheckInDate(), existing.getCheckOutDate())) {
+                    throw new RoomNotAvailableException("Room " + room.getRoomNumber()
+                            + " is already booked for overlapping dates.");
+                }
+            }
+        }
+
+        if (!room.isAvailable()) {
+            throw new RoomNotAvailableException("Room " + room.getRoomNumber() + " is not available.");
+        }
+
+        String bookingId = IdGenerator.generateBookingId(bookingCounter++);
+        String bookingDate = DateUtils.today();
         Booking booking = new Booking(bookingId, student, room, bookingDate, checkIn, checkOut, "Active");
 
         bookings.add(booking);
@@ -66,6 +107,10 @@ public class BookingManager implements Saveable, Bookable {
 
         save();
         roomManager.save();
+
+        notificationManager.sendNotification(student.getId(),
+                "Your booking " + bookingId + " for room " + room.getRoomNumber() + " is confirmed.");
+
         return booking;
     }
 
@@ -87,10 +132,13 @@ public class BookingManager implements Saveable, Bookable {
         booking.setStatus("Cancelled");
         if (booking.getRoom() != null) {
             booking.getRoom().setAvailable(true);
+            roomManager.save();
         }
 
         save();
-        roomManager.save();
+        notificationManager.sendNotification(
+                booking.getStudent() != null ? booking.getStudent().getId() : "ADMIN",
+                "Booking " + bookingId + " has been cancelled.");
         return true;
     }
 
@@ -133,61 +181,58 @@ public class BookingManager implements Saveable, Bookable {
         return bookingMap.get(bookingId);
     }
 
-    @Override
-    public boolean book(String studentId, String roomNumber) {
-        Student student = studentManager.findStudent(studentId);
-        AbstractRoom room = roomManager.findRoom(roomNumber);
-
-        if (student == null || room == null) {
-            return false;
-        }
-
-        try {
-            createBooking(student, room,
-                    LocalDate.now().toString(),
-                    LocalDate.now().plusMonths(1).toString());
-            return true;
-        } catch (RoomNotAvailableException e) {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean cancel(String bookingId) {
-        return cancelBooking(bookingId);
-    }
-
-    @Override
-    public String getStatus() {
-        int active = 0;
-        for (Booking booking : bookings) {
-            if ("Active".equalsIgnoreCase(booking.getStatus())) {
-                active++;
+    /**
+     * Returns the count of active bookings.
+     *
+     * @return active booking count
+     */
+    public int getActiveBookingsCount() {
+        int count = 0;
+        for (Booking b : bookings) {
+            if (b.isActive()) {
+                count++;
             }
         }
-        return "Total Bookings: " + bookings.size() + " | Active: " + active;
+        return count;
+    }
+
+    /**
+     * Calculates total revenue from all active bookings.
+     *
+     * @return total revenue in Rs.
+     */
+    public double getTotalRevenue() {
+        double total = 0;
+        for (Booking b : bookings) {
+            if (b.isActive() && b.getRoom() != null) {
+                total += DateUtils.calculateTotalCost(
+                        b.getRoom().getPricePerMonth(),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate());
+            }
+        }
+        return total;
     }
 
     @Override
-    public final void save() {
+    public void save() {
         List<String> lines = new ArrayList<>();
         for (Booking booking : bookings) {
             String studentId = booking.getStudent() == null ? "" : booking.getStudent().getId();
             String roomNumber = booking.getRoom() == null ? "" : booking.getRoom().getRoomNumber();
-            String line = booking.getBookingId() + "|"
-                    + studentId + "|"
-                    + roomNumber + "|"
-                    + nullSafe(booking.getBookingDate()) + "|"
-                    + nullSafe(booking.getCheckInDate()) + "|"
-                    + nullSafe(booking.getCheckOutDate()) + "|"
-                    + nullSafe(booking.getStatus());
-            lines.add(line);
+            lines.add(booking.getBookingId() + "|"
+                    + sanitize(studentId) + "|"
+                    + sanitize(roomNumber) + "|"
+                    + sanitize(booking.getBookingDate()) + "|"
+                    + sanitize(booking.getCheckInDate()) + "|"
+                    + sanitize(booking.getCheckOutDate()) + "|"
+                    + sanitize(booking.getStatus()));
         }
         FileManager.writeToFile(FILE, lines);
     }
 
     @Override
-    public final void load() {
+    public void load() {
         bookings.clear();
         bookingMap.clear();
 
@@ -195,18 +240,21 @@ public class BookingManager implements Saveable, Bookable {
         int maxCounter = 0;
 
         for (String line : lines) {
+            if (line == null || line.trim().isEmpty()) {
+                continue;
+            }
             String[] parts = line.split("\\|", -1);
             if (parts.length < 7) {
                 continue;
             }
 
-            String bookingId = parts[0];
-            String studentId = parts[1];
-            String roomNumber = parts[2];
-            String bookingDate = parts[3];
-            String checkIn = parts[4];
-            String checkOut = parts[5];
-            String status = parts[6];
+            String bookingId = parts[0].trim();
+            String studentId = parts[1].trim();
+            String roomNumber = parts[2].trim();
+            String bookingDate = parts[3].trim();
+            String checkIn = parts[4].trim();
+            String checkOut = parts[5].trim();
+            String status = parts[6].trim();
 
             Student student = studentManager.findStudent(studentId);
             AbstractRoom room = roomManager.findRoom(roomNumber);
@@ -223,38 +271,24 @@ public class BookingManager implements Saveable, Bookable {
                 room.setAvailable(false);
             }
 
-            int parsedCounter = parseBookingCounter(bookingId);
+            int parsedCounter = parseCounter(bookingId);
             if (parsedCounter > maxCounter) {
                 maxCounter = parsedCounter;
             }
         }
-
         bookingCounter = maxCounter + 1;
     }
 
-    private String generateBookingId() {
-        String id = String.format("BK%03d", bookingCounter);
-        while (bookingMap.containsKey(id)) {
-            bookingCounter++;
-            id = String.format("BK%03d", bookingCounter);
-        }
-        bookingCounter++;
-        return id;
-    }
-
-    private int parseBookingCounter(String bookingId) {
+    private int parseCounter(String bookingId) {
         try {
             String number = bookingId.replaceAll("[^0-9]", "");
-            if (number.isEmpty()) {
-                return 0;
-            }
-            return Integer.parseInt(number);
+            return number.isEmpty() ? 0 : Integer.parseInt(number);
         } catch (NumberFormatException e) {
             return 0;
         }
     }
 
-    private String nullSafe(String value) {
+    private String sanitize(String value) {
         return value == null ? "" : value.replace("|", "/");
     }
 }
