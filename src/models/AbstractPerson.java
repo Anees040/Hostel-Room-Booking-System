@@ -2,64 +2,58 @@ package models;
 
 /**
  * Base abstraction for all people using the hostel system.
+ * Demonstrates abstract class (Lab 07) and encapsulation (Lab 03).
  */
 public abstract class AbstractPerson {
+    private String personId;
     private String name;
-    private String id;
-    private String contact;
+    private String contactNumber;
     private String password;
 
     /**
      * Constructs a person with common profile details.
      *
-     * @param name full name
-     * @param id unique identifier
-     * @param contact contact info
-     * @param password account password
+     * @param personId      unique identifier
+     * @param name          full name
+     * @param contactNumber contact number
+     * @param password      account password
      */
-    public AbstractPerson(String name, String id, String contact, String password) {
+    public AbstractPerson(String personId, String name, String contactNumber, String password) {
+        this.personId = personId;
         this.name = name;
-        this.id = id;
-        this.contact = contact;
+        this.contactNumber = contactNumber;
         this.password = password;
     }
 
-    public String getName() {
-        return name;
-    }
+    public String getPersonId() { return personId; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    /** Alias for getPersonId() for backwards compatibility with existing code. */
+    public String getId() { return personId; }
 
-    public String getId() {
-        return id;
-    }
+    public void setPersonId(String personId) { this.personId = personId; }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getContact() {
-        return contact;
-    }
+    public String getContactNumber() { return contactNumber; }
 
-    public void setContact(String contact) {
-        this.contact = contact;
-    }
+    /** Alias for getContactNumber() for backwards compatibility. */
+    public String getContact() { return contactNumber; }
 
-    public String getPassword() {
-        return password;
-    }
+    public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     /**
-     * Returns the role name.
+     * Returns the role of this person.
      *
-     * @return role name
+     * @return role name string
      */
     public abstract String getRole();
+
+    @Override
+    public String toString() {
+        return "ID: " + personId + " | Name: " + name + " | Contact: " + contactNumber;
+    }
 }
