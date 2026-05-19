@@ -13,11 +13,11 @@ public abstract class AbstractRoom {
     /**
      * Constructs a room with common attributes.
      *
-     * @param roomNumber room identifier
-     * @param floor floor number
+     * @param roomNumber    room identifier
+     * @param floor         floor number
      * @param pricePerMonth monthly room price
-     * @param isAvailable room availability flag
-     * @param amenities comma separated amenities
+     * @param isAvailable   room availability flag
+     * @param amenities     comma separated amenities
      */
     public AbstractRoom(String roomNumber, int floor, double pricePerMonth, boolean isAvailable, String amenities) {
         this.roomNumber = roomNumber;
@@ -27,45 +27,20 @@ public abstract class AbstractRoom {
         this.amenities = amenities;
     }
 
-    public String getRoomNumber() {
-        return roomNumber;
-    }
+    public String getRoomNumber() { return roomNumber; }
+    public void setRoomNumber(String roomNumber) { this.roomNumber = roomNumber; }
 
-    public void setRoomNumber(String roomNumber) {
-        this.roomNumber = roomNumber;
-    }
+    public int getFloor() { return floor; }
+    public void setFloor(int floor) { this.floor = floor; }
 
-    public int getFloor() {
-        return floor;
-    }
+    public double getPricePerMonth() { return pricePerMonth; }
+    public void setPricePerMonth(double pricePerMonth) { this.pricePerMonth = pricePerMonth; }
 
-    public void setFloor(int floor) {
-        this.floor = floor;
-    }
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { isAvailable = available; }
 
-    public double getPricePerMonth() {
-        return pricePerMonth;
-    }
-
-    public void setPricePerMonth(double pricePerMonth) {
-        this.pricePerMonth = pricePerMonth;
-    }
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
-
-    public String getAmenities() {
-        return amenities;
-    }
-
-    public void setAmenities(String amenities) {
-        this.amenities = amenities;
-    }
+    public String getAmenities() { return amenities; }
+    public void setAmenities(String amenities) { this.amenities = amenities; }
 
     /**
      * Returns the room category name.
@@ -82,15 +57,29 @@ public abstract class AbstractRoom {
     public abstract double getPrice();
 
     /**
-     * Returns maximum occupancy.
+     * Returns maximum occupancy for this room type (Lab 07 abstract method).
+     *
+     * @return max occupancy
+     */
+    public abstract int getMaxOccupancy();
+
+    /**
+     * Returns capacity alias for backwards compatibility.
      *
      * @return room capacity
      */
-    public abstract int getCapacity();
+    public int getCapacity() {
+        return getMaxOccupancy();
+    }
 
     @Override
     public String toString() {
-        return roomNumber + " | " + getRoomType() + " | Rs." + getPrice()
-                + " | " + (isAvailable ? "Available" : "Booked");
+        return "Type: " + getRoomType()
+                + " | Room: " + roomNumber
+                + " | Floor: " + floor
+                + " | Price: Rs." + pricePerMonth + "/month"
+                + " | Max Occupancy: " + getMaxOccupancy()
+                + " | " + (isAvailable ? "Available" : "Booked")
+                + " | Amenities: " + (amenities == null ? "None" : amenities);
     }
 }
