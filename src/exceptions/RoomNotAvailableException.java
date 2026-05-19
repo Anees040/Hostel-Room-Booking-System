@@ -6,11 +6,11 @@ package exceptions;
 public class RoomNotAvailableException extends Exception {
 
     /**
-     * Constructs the exception with room-specific context.
+     * Constructs with a detail message.
      *
-     * @param roomNumber room identifier
+     * @param message detail message
      */
-    public RoomNotAvailableException(String roomNumber) {
-        super("Room " + roomNumber + " is not available for booking.");
+    public RoomNotAvailableException(String message) {
+        super(message);
     }
 }
