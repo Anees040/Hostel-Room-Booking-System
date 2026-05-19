@@ -2,30 +2,20 @@ package models;
 
 /**
  * Admin entity for management operations.
+ * Extends AbstractPerson (Lab 06 — Inheritance).
  */
 public class Admin extends AbstractPerson {
-    private String designation;
 
     /**
      * Constructs an admin profile.
      *
-     * @param name admin name
-     * @param id admin id
-     * @param contact contact details
-     * @param password password
-     * @param designation admin designation
+     * @param personId      admin ID
+     * @param name          admin name
+     * @param contactNumber contact number
+     * @param password      password
      */
-    public Admin(String name, String id, String contact, String password, String designation) {
-        super(name, id, contact, password);
-        this.designation = designation;
-    }
-
-    public String getDesignation() {
-        return designation;
-    }
-
-    public void setDesignation(String designation) {
-        this.designation = designation;
+    public Admin(String personId, String name, String contactNumber, String password) {
+        super(personId, name, contactNumber, password);
     }
 
     @Override
