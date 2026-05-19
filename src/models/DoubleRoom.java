@@ -8,11 +8,11 @@ public class DoubleRoom extends AbstractRoom {
     /**
      * Constructs a double room.
      *
-     * @param roomNumber room number
-     * @param floor floor number
+     * @param roomNumber    room number
+     * @param floor         floor number
      * @param pricePerMonth monthly price
-     * @param isAvailable availability
-     * @param amenities amenities list
+     * @param isAvailable   availability
+     * @param amenities     amenities list
      */
     public DoubleRoom(String roomNumber, int floor, double pricePerMonth, boolean isAvailable, String amenities) {
         super(roomNumber, floor, pricePerMonth, isAvailable, amenities);
@@ -29,7 +29,7 @@ public class DoubleRoom extends AbstractRoom {
     }
 
     @Override
-    public int getCapacity() {
+    public int getMaxOccupancy() {
         return 2;
     }
 }
