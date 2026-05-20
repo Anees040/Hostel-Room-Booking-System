@@ -104,8 +104,11 @@ public class BookingDialog extends JDialog {
 
         // DocumentListener to auto-update duration and cost
         DocumentListener dl = new DocumentListener() {
+            @Override
             public void insertUpdate(DocumentEvent e) { updateDuration(); }
+            @Override
             public void removeUpdate(DocumentEvent e) { updateDuration(); }
+            @Override
             public void changedUpdate(DocumentEvent e) { updateDuration(); }
         };
         checkInField.getDocument().addDocumentListener(dl);

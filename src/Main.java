@@ -2,6 +2,8 @@ import gui.LoginFrame;
 import gui.SplashScreen;
 import gui.UITheme;
 import java.io.File;
+import java.util.ArrayList;
+import models.AbstractRoom;
 import models.DoubleRoom;
 import models.SingleRoom;
 import models.SuiteRoom;
@@ -10,17 +12,10 @@ import services.MaintenanceManager;
 import services.NotificationManager;
 import services.RoomManager;
 import services.StudentManager;
-import utils.DataStore;
 import utils.PersonPrinter;
 import utils.RoomPrinter;
-import java.util.ArrayList;
-import models.AbstractRoom;
 
-/**
- * Application entry point.
- * Demonstrates polymorphism (Lab 08), Generics (Lab 11), and
- * File I/O (Lab 12) by orchestrating all manager classes.
- */
+
 public class Main {
 
     /**

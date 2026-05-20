@@ -249,8 +249,11 @@ public class ReportsPanel extends JPanel {
 
         JTextField searchField = new JTextField(20);
         searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
             public void insertUpdate(DocumentEvent e) { filterHistory(searchField.getText()); }
+            @Override
             public void removeUpdate(DocumentEvent e) { filterHistory(searchField.getText()); }
+            @Override
             public void changedUpdate(DocumentEvent e) { filterHistory(searchField.getText()); }
         });
 

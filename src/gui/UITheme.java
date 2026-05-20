@@ -15,7 +15,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 
 /**
@@ -101,7 +100,9 @@ public class UITheme {
             private boolean hovered = false;
             {
                 addMouseListener(new MouseAdapter() {
+                    @Override
                     public void mouseEntered(MouseEvent e) { hovered = true;  repaint(); }
+                    @Override
                     public void mouseExited(MouseEvent e)  { hovered = false; repaint(); }
                 });
             }
@@ -235,12 +236,30 @@ public class UITheme {
         lbl.setFont(SMALL_FONT);
         lbl.setOpaque(false);
         switch (status.toLowerCase()) {
-            case "active":    lbl.setBackground(new Color(220, 252, 231)); lbl.setForeground(new Color(22, 101, 52)); break;
-            case "cancelled": lbl.setBackground(new Color(254, 226, 226)); lbl.setForeground(new Color(153, 27, 27)); break;
-            case "pending":   lbl.setBackground(new Color(254, 243, 199)); lbl.setForeground(new Color(146, 64, 14)); break;
-            case "resolved":  lbl.setBackground(new Color(220, 252, 231)); lbl.setForeground(new Color(22, 101, 52)); break;
-            case "in progress": lbl.setBackground(new Color(219, 234, 254)); lbl.setForeground(new Color(30, 64, 175)); break;
-            default:          lbl.setBackground(new Color(241, 245, 249)); lbl.setForeground(TEXT_SECONDARY);
+            case "active" -> {
+                lbl.setBackground(new Color(220, 252, 231));
+                lbl.setForeground(new Color(22, 101, 52));
+            }
+            case "cancelled" -> {
+                lbl.setBackground(new Color(254, 226, 226));
+                lbl.setForeground(new Color(153, 27, 27));
+            }
+            case "pending" -> {
+                lbl.setBackground(new Color(254, 243, 199));
+                lbl.setForeground(new Color(146, 64, 14));
+            }
+            case "resolved" -> {
+                lbl.setBackground(new Color(220, 252, 231));
+                lbl.setForeground(new Color(22, 101, 52));
+            }
+            case "in progress" -> {
+                lbl.setBackground(new Color(219, 234, 254));
+                lbl.setForeground(new Color(30, 64, 175));
+            }
+            default -> {
+                lbl.setBackground(new Color(241, 245, 249));
+                lbl.setForeground(TEXT_SECONDARY);
+            }
         }
         return lbl;
     }
@@ -263,7 +282,7 @@ public class UITheme {
                     break;
                 }
             }
-        } catch (Exception e) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException e) {
             // fallback to default
         }
     }

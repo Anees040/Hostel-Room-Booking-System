@@ -169,15 +169,8 @@ public class MaintenanceManager implements Saveable, Maintainable {
                 // Since MaintenanceManager doesn't have StudentManager, we resolve at load via null-safe approach
                 AbstractRoom room = roomManager.findRoom(roomNumber);
 
-                // Create a placeholder student with just ID for display purposes
-                Student student = null;
-                // We can't resolve student without StudentManager; store as null and use ID for display
-                MaintenanceRequest req = new MaintenanceRequest(
-                        requestId, description, status, requestedDate, resolvedDate, student, room);
-
-                // Store student ID in a workaround: we use a transient Student with only ID
-                // Actually, create a minimal student for ID reference
-                student = new Student("Unknown", studentId, "", "", "", "", 1);
+                // Create a minimal student for ID reference (workaround for lack of StudentManager)
+                Student student = new Student("Unknown", studentId, "", "", "", "", 1);
                 MaintenanceRequest reqWithStudent = new MaintenanceRequest(
                         requestId, description, status, requestedDate, resolvedDate, student, room);
 

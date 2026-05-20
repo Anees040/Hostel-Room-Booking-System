@@ -16,7 +16,6 @@ import java.awt.Insets;
 import java.awt.RenderingHints;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -25,6 +24,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
@@ -252,7 +252,6 @@ public class LoginFrame extends JFrame {
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1, true),
                 new EmptyBorder(24, 36, 20, 36)));
-        card.setPreferredSize(new Dimension(400, 520));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0; gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -331,7 +330,17 @@ public class LoginFrame extends JFrame {
 
         GridBagConstraints wgbc = new GridBagConstraints();
         wrapper.add(card, wgbc);
-        return wrapper;
+
+        JScrollPane scroll = new JScrollPane(wrapper,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        JPanel outerWrapper = new JPanel(new BorderLayout());
+        outerWrapper.setBackground(UITheme.LIGHT_BG);
+        outerWrapper.add(scroll, BorderLayout.CENTER);
+        return outerWrapper;
     }
 
     // -----------------------------------------------------------------------
@@ -362,9 +371,13 @@ public class LoginFrame extends JFrame {
 
         Student student = studentManager.login(id, password);
         if (student != null) {
-            dispose();
             new StudentDashboard(student, roomManager, bookingManager,
-                    maintenanceManager, notificationManager).setVisible(true);
+                    maintenanceManager, notificationManager, () -> {
+                        LoginFrame.this.setVisible(true);
+                        idField.setText("");
+                        passwordField.setText("");
+                    }).setVisible(true);
+            dispose();
         } else {
             JOptionPane.showMessageDialog(this,
                     "<html>Invalid credentials.<br>Sample: <b>SP23-BSE-030 / ali12345</b></html>",

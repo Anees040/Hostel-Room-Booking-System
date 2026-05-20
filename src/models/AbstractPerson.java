@@ -1,9 +1,6 @@
 package models;
 
-/**
- * Base abstraction for all people using the hostel system.
- * Demonstrates abstract class (Lab 07) and encapsulation (Lab 03).
- */
+
 public abstract class AbstractPerson {
     private String personId;
     private String name;

@@ -123,7 +123,7 @@ public class RoomManager implements Saveable, Reviewable {
                 AbstractRoom room = findRoom(roomNo);
                 // Create review with null student (student name resolved from ID at display time)
                 reviews.add(new models.RoomReview(reviewId, comment, reviewDate, rating, null, room));
-            } catch (Exception e) {
+            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
                 System.err.println("Skipping invalid review line: " + line);
             }
         }

@@ -1,7 +1,5 @@
 package gui;
 
-import exceptions.InvalidBookingException;
-import exceptions.RoomNotAvailableException;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -13,7 +11,6 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -22,7 +19,6 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -50,6 +46,7 @@ public class StudentDashboard extends JFrame {
     private final BookingManager bookingManager;
     private final MaintenanceManager maintenanceManager;
     private final NotificationManager notificationManager;
+    private final Runnable onLogout;
 
     private DefaultTableModel availableRoomsModel;
     private DefaultTableModel myBookingsModel;
@@ -58,23 +55,19 @@ public class StudentDashboard extends JFrame {
     private DefaultTableModel notifTableModel;
     private JLabel unreadBadge;
 
-    /**
-     * Constructs the student dashboard.
-     *
-     * @param student             authenticated student
-     * @param roomManager         room manager
-     * @param bookingManager      booking manager
-     * @param maintenanceManager  maintenance manager
-     * @param notificationManager notification manager
-     */
+    // Class-level combo boxes so they can be refreshed after a booking is made
+    private JComboBox<String> maintenanceRoomCombo;
+    private JComboBox<String> reviewRoomCombo;
+
     public StudentDashboard(Student student, RoomManager roomManager,
                             BookingManager bookingManager, MaintenanceManager maintenanceManager,
-                            NotificationManager notificationManager) {
+                            NotificationManager notificationManager, Runnable onLogout) {
         this.student = student;
         this.roomManager = roomManager;
         this.bookingManager = bookingManager;
         this.maintenanceManager = maintenanceManager;
         this.notificationManager = notificationManager;
+        this.onLogout = onLogout;
 
         UITheme.applyNimbusLookAndFeel();
         initFrame();
@@ -94,6 +87,9 @@ public class StudentDashboard extends JFrame {
                         "Logout and exit?", "Confirm Logout", JOptionPane.YES_NO_OPTION);
                 if (choice == JOptionPane.YES_OPTION) {
                     dispose();
+                    if (onLogout != null) {
+                        onLogout.run();
+                    }
                 }
             }
         });
@@ -137,7 +133,16 @@ public class StudentDashboard extends JFrame {
         idLabel.setFont(UITheme.SMALL_FONT);
         idLabel.setForeground(new Color(186, 211, 252));
         JButton logoutBtn = UITheme.dangerButton("Sign Out");
-        logoutBtn.addActionListener(e -> dispose());
+        logoutBtn.addActionListener(e -> {
+            int choice = JOptionPane.showConfirmDialog(StudentDashboard.this,
+                    "Are you sure you want to logout?", "Confirm Logout", JOptionPane.YES_NO_OPTION);
+            if (choice == JOptionPane.YES_OPTION) {
+                dispose();
+                if (onLogout != null) {
+                    onLogout.run();
+                }
+            }
+        });
         rightH.add(idLabel);
         rightH.add(logoutBtn);
 
@@ -148,11 +153,24 @@ public class StudentDashboard extends JFrame {
         // Center — tabs
         JTabbedPane tabs = new JTabbedPane();
         tabs.setFont(UITheme.BODY_FONT);
-        tabs.addTab("Browse Rooms",        buildBrowseRoomsTab());
-        tabs.addTab("My Bookings",         buildMyBookingsTab());
-        tabs.addTab("Submit Maintenance",  buildMaintenanceTab());
-        tabs.addTab("Reviews",              buildReviewsTab());
-        tabs.addTab("Notifications",       buildNotificationsTab());
+        tabs.addTab("Browse Rooms",       buildBrowseRoomsTab());
+        tabs.addTab("My Bookings",        buildMyBookingsTab());
+        tabs.addTab("Submit Maintenance", buildMaintenanceTab());
+        tabs.addTab("Reviews",            buildReviewsTab());
+        tabs.addTab("Notifications",      buildNotificationsTab());
+
+        // Refresh room combos whenever the user switches to those tabs
+        tabs.addChangeListener(e -> {
+            int idx = tabs.getSelectedIndex();
+            if (idx == 2) {
+                refreshMaintenanceRooms();
+                loadMyMaintenance();
+            } else if (idx == 3) {
+                refreshReviewRooms();
+                loadMyReviews();
+            }
+        });
+
         add(tabs, BorderLayout.CENTER);
     }
 
@@ -197,7 +215,7 @@ public class StudentDashboard extends JFrame {
         Runnable load = () -> {
             String filter = (String) typeFilter.getSelectedItem();
             double maxPrice = 0;
-            try { maxPrice = Double.parseDouble(maxPriceField.getText().trim()); } catch (Exception ignored) {}
+            try { maxPrice = Double.parseDouble(maxPriceField.getText().trim()); } catch (NumberFormatException ignored) {}
             final double mp = maxPrice;
 
             availableRoomsModel.setRowCount(0);
@@ -234,6 +252,9 @@ public class StudentDashboard extends JFrame {
             dlg.setVisible(true);
             load.run();
             refreshMyBookings();
+            // Refresh maintenance and review combos so booked room appears immediately
+            refreshMaintenanceRooms();
+            refreshReviewRooms();
             refreshUnreadBadge();
         });
 
@@ -282,6 +303,8 @@ public class StudentDashboard extends JFrame {
                 if (bookingManager.cancelBooking(bookingId)) {
                     JOptionPane.showMessageDialog(this, "Booking cancelled.", "Success", JOptionPane.INFORMATION_MESSAGE);
                     refreshMyBookings();
+                    refreshMaintenanceRooms();
+                    refreshReviewRooms();
                     refreshUnreadBadge();
                 } else {
                     JOptionPane.showMessageDialog(this, "Cannot cancel this booking.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -319,16 +342,7 @@ public class StudentDashboard extends JFrame {
         panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Get active bookings rooms
-        List<Booking> activeBookings = bookingManager.getBookingsByStudent(student.getId());
-        JComboBox<String> roomCombo = new JComboBox<>();
-        boolean hasActive = false;
-        for (Booking b : activeBookings) {
-            if (b.isActive() && b.getRoom() != null) {
-                roomCombo.addItem(b.getRoom().getRoomNumber());
-                hasActive = true;
-            }
-        }
+        maintenanceRoomCombo = new JComboBox<>();
 
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(UITheme.LIGHT_BG);
@@ -341,25 +355,15 @@ public class StudentDashboard extends JFrame {
         descArea.setFont(UITheme.BODY_FONT);
         JButton submitBtn = UITheme.primaryButton("Submit Request");
 
-        if (!hasActive) {
-            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-            JLabel noBooking = new JLabel("No active bookings. Book a room first.");
-            noBooking.setForeground(UITheme.DANGER);
-            noBooking.setFont(UITheme.BODY_FONT);
-            formPanel.add(noBooking, gbc);
-            submitBtn.setEnabled(false);
-        } else {
-            gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 1;
-            formPanel.add(new JLabel("Room:"), gbc);
-            gbc.gridx = 1; formPanel.add(roomCombo, gbc);
-            gbc.gridx = 0; gbc.gridy = 1; formPanel.add(new JLabel("Description:"), gbc);
-            gbc.gridx = 1; formPanel.add(new JScrollPane(descArea), gbc);
-            gbc.gridx = 1; gbc.gridy = 2; formPanel.add(submitBtn, gbc);
-        }
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 1;
+        formPanel.add(new JLabel("Room:"), gbc);
+        gbc.gridx = 1; formPanel.add(maintenanceRoomCombo, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; formPanel.add(new JLabel("Description:"), gbc);
+        gbc.gridx = 1; formPanel.add(new JScrollPane(descArea), gbc);
+        gbc.gridx = 1; gbc.gridy = 2; formPanel.add(submitBtn, gbc);
 
         panel.add(formPanel, BorderLayout.NORTH);
 
-        // Table of student's maintenance requests
         maintenanceTableModel = new DefaultTableModel(
                 new Object[]{"Request ID", "Room", "Description", "Status", "Date", "Resolved Date"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -368,13 +372,20 @@ public class StudentDashboard extends JFrame {
         UITheme.styleTable(table);
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
 
+        refreshMaintenanceRooms();
         loadMyMaintenance();
 
         submitBtn.addActionListener(e -> {
-            String roomNo = (String) roomCombo.getSelectedItem();
+            String roomNo = (String) maintenanceRoomCombo.getSelectedItem();
             String desc = descArea.getText().trim();
-            if (roomNo == null || desc.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please select a room and enter a description.",
+            if (roomNo == null) {
+                JOptionPane.showMessageDialog(this,
+                        "No active bookings found. Please book a room first.",
+                        "No Active Booking", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (desc.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a description.",
                         "Input Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -390,6 +401,16 @@ public class StudentDashboard extends JFrame {
         });
 
         return panel;
+    }
+
+    private void refreshMaintenanceRooms() {
+        if (maintenanceRoomCombo == null) return;
+        maintenanceRoomCombo.removeAllItems();
+        for (Booking b : bookingManager.getBookingsByStudent(student.getId())) {
+            if (b.isActive() && b.getRoom() != null) {
+                maintenanceRoomCombo.addItem(b.getRoom().getRoomNumber());
+            }
+        }
     }
 
     private void loadMyMaintenance() {
@@ -417,13 +438,7 @@ public class StudentDashboard extends JFrame {
         panel.setBackground(UITheme.LIGHT_BG);
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Rooms from past bookings
-        JComboBox<String> roomCombo = new JComboBox<>();
-        for (Booking b : bookingManager.getBookingsByStudent(student.getId())) {
-            if (b.getRoom() != null) {
-                roomCombo.addItem(b.getRoom().getRoomNumber());
-            }
-        }
+        reviewRoomCombo = new JComboBox<>();
 
         JSlider ratingSlider = new JSlider(1, 5, 3);
         ratingSlider.setMajorTickSpacing(1);
@@ -442,7 +457,7 @@ public class StudentDashboard extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         gbc.gridx = 0; gbc.gridy = 0; formPanel.add(new JLabel("Room:"), gbc);
-        gbc.gridx = 1; formPanel.add(roomCombo, gbc);
+        gbc.gridx = 1; formPanel.add(reviewRoomCombo, gbc);
         gbc.gridx = 0; gbc.gridy = 1; formPanel.add(new JLabel("Rating (1-5):"), gbc);
         gbc.gridx = 1; formPanel.add(ratingSlider, gbc);
         gbc.gridx = 0; gbc.gridy = 2; formPanel.add(new JLabel("Comment:"), gbc);
@@ -459,14 +474,21 @@ public class StudentDashboard extends JFrame {
         UITheme.styleTable(table);
         panel.add(new JScrollPane(table), BorderLayout.CENTER);
 
+        refreshReviewRooms();
         loadMyReviews();
 
         submitBtn.addActionListener(e -> {
-            String roomNo = (String) roomCombo.getSelectedItem();
+            String roomNo = (String) reviewRoomCombo.getSelectedItem();
             int rating = ratingSlider.getValue();
             String comment = commentArea.getText().trim();
-            if (roomNo == null || comment.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Select a room and enter a comment.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            if (roomNo == null) {
+                JOptionPane.showMessageDialog(this,
+                        "No booked rooms found. Please book a room first.",
+                        "No Booking", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (comment.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a comment.", "Input Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             AbstractRoom room = roomManager.findRoom(roomNo);
@@ -479,6 +501,26 @@ public class StudentDashboard extends JFrame {
         });
 
         return panel;
+    }
+
+    private void refreshReviewRooms() {
+        if (reviewRoomCombo == null) return;
+        reviewRoomCombo.removeAllItems();
+        for (Booking b : bookingManager.getBookingsByStudent(student.getId())) {
+            if (b.getRoom() != null) {
+                String roomNo = b.getRoom().getRoomNumber();
+                boolean alreadyAdded = false;
+                for (int i = 0; i < reviewRoomCombo.getItemCount(); i++) {
+                    if (reviewRoomCombo.getItemAt(i).equals(roomNo)) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded) {
+                    reviewRoomCombo.addItem(roomNo);
+                }
+            }
+        }
     }
 
     private void loadMyReviews() {
