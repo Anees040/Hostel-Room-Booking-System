@@ -4,12 +4,12 @@ package models;
  * Represents a student review for a room.
  */
 public class RoomReview {
-    private String reviewId;
-    private String comment;
-    private String reviewDate;
-    private int rating;
-    private Student reviewer;
-    private AbstractRoom room;
+    private final String reviewId;
+    private final String comment;
+    private final String reviewDate;
+    private final int rating;
+    private final Student reviewer;
+    private final AbstractRoom room;
 
     /**
      * Constructs a room review.
